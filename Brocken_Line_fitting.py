@@ -88,10 +88,6 @@ def detection_CVline(img, x1,y1,x2,y2):#另一种找路径上已有点的尝试,
         if(img[i][j]==255):
             count+=1
     print(count)
-    # cv2.imshow('img',img)
-    # cv2.imshow('imgt',img_t)
-    # cv2.imshow('img_tt',img_tt)
-    # cv2.waitKey()
     return count
 
 
@@ -140,12 +136,6 @@ def findPoint(img,x1,y1,x2,y2):#根据给定的霍夫变换结果返回待拟合
     if (x2 != x1 and y1 != y2):  # 当不是垂线或横线
         k = (y2 - y1) / (x2 - x1)  # 原始线段斜率
         k2 = -1 / k  # 原始线段垂线的斜率
-        ##根据斜率，确定待检测断点的范围（两点间线段周围若干个像素）【求四边形范围点集】
-        # 斜率=tan(角度)=y/x
-        # 若要在垂线斜率方向上移动5个像素，x方向要移动cos(角度)*5的距离
-        # 那么则计算方式为x=根号下（1/（k方+1））*width
-        # 先求四边形四个点的坐标，求出四个边界线的公式
-        # 根据四个点确定要遍历的xy轴范围，判断每个点是否在四条边界内，（点带入边界线公式，判断是否大于0或小于0）
         dx = math.sqrt(1 / (k2 * k2 + 1)) * width  # dx肯定大于0，在原点x轴方向上的取值幅度（一半）,这里没有考虑dx<1的这种极端情况，这种属于特殊斜率情况
         dy = k2 * dx  # dy不确定正负
         # dx方+dy方=25
@@ -179,19 +169,8 @@ def findPoint(img,x1,y1,x2,y2):#根据给定的霍夫变换结果返回待拟合
 
     return inside#返回待检测区域的所有点
 
-"""策略1：根据距离原点的远近依次相互连接，用字典记录对应的点和对应的距离
-策略2：根据断点与断点之间的距离来判断，断点与距离自己最近的断点进行连接，两个断点完成连接后退出匹配
-策略3：分几步走，先设阈值，将离得很近的断点连起来（离得近的点之间不能有其他点线存在），再考虑离得远的断点的问题
-    相距远的点，按离原点的距离依次连，连完要求必须
-    1.与原线斜率相近。2.连线上以及连线周围1像素内不能已有等于或超过2或3个点（因为单个点可能是另一条裂缝与之相交或杂点，可忽略）
-    若没达到要求，则跳过前点，后点做前点继续计算
-    对size大的图片进行切割预测再拼接会不会效果好一点？"""
 
-def connectPoint(img,Pointlist,x,y):#输入待连接断点集[[x1宽,y1高],[x2,y2],[x3,y3]...],原点坐标之一【宽，高】
-    #问题1：原点为断点之一时，怎么处理
-    # 问题2：当断点数为奇数时怎么处理
-    #问题3：原本两个原点，只用一个原点作为参考会不会有漏洞
-    # print(Pointlist)
+def connectPoint(img,Pointlist,x,y):
     x0=x
     y0=y
     dict={}
@@ -208,10 +187,7 @@ def connectPoint(img,Pointlist,x,y):#输入待连接断点集[[x1宽,y1高],[x2,
         point_val=[int(point_val.split(',')[0]),int(point_val.split(',')[1])]
         # print(point_val)#[宽，高]
         dict_sorted['{}'.format(rank)] = point_val
-    # print(dict_sorted)#rank_bydistence:point
-    # for i,val in enumerate(dict_sorted.values(),1):#下标从1开始
-        #dict.keys()、dict.values() 和 dict.items() 返回的都是视图对象,视图对象不是列表，不支持索引，可以使用 list() 来转换为列表。
-        # print(val[0][0],val[0][1],val[1][0],val[1][1])
+
     i=False#控制路径临时参数
     for val in dict_sorted.values():#遍历排好序的点坐标字典
         if(i==False):
@@ -219,16 +195,7 @@ def connectPoint(img,Pointlist,x,y):#输入待连接断点集[[x1宽,y1高],[x2,
             t2=val[1]#高
             i=True
         else:
-            # print(t1,t2,val[0],val[1])#横shape[1],纵shape[0],横,纵
-            # y = (x - x2) * (y1 - y2) / (x1 - x2) + y2,两点式。
-            #求出路径上的所有点，判断原图中在这些点上有没有2个或以上的点值为255，若有则后点变前点，继续向后匹配
-            # count = 0#判断该路径上有几个点存在
-            # img_tt=np.zeros((img.shape[0],img.shape[1]))
-            # for j in range(min(t1,val[0])+1,max(t1,val[0])):#中间路径，应该不含前也不含后
-            #     img_tt[int((j - val[0]) * (t2 - val[1]) / (t1 - val[0]) + val[1]),j]=255
-            #     if(img[int((j - val[0]) * (t2 - val[1]) / (t1 - val[0]) + val[1]),j]==255):
-            #         count+=1
-            # count=eightNeighborhoodDetection_line(img,t1,t2,val[0],val[1])
+       
             count=detection_CVline(img,t1,t2,val[0],val[1])
             # print(count)
             if(count>3):#设置适合的阈值，超过阈值则不连接
@@ -238,19 +205,6 @@ def connectPoint(img,Pointlist,x,y):#输入待连接断点集[[x1宽,y1高],[x2,
             cv2.line(img,(t1,t2),(val[0],val[1]),255,1)#划线
             i=False
 
-# lines = cv2.HoughLinesP(img_test, 1, np.pi / 180, 5, minLineLength=10, maxLineGap=5)
-        # 参数2：精度r，值越大考虑线越多；参数3：角度的精度，值越小考虑越多的线。
-        # 这里的参数2和3我认为应该是设定多少角度偏差内的像素点们可以被视作在同一直线上的点
-# print(lines)#返回一个np数组,每个元素都是一对像素位置（两个端点的坐标）
-# for line in lines:
-#     x1,y1,x2,y2=line[0]#读取端点坐标
-#     #Jiang,找到连接点所在线段的端点
-#     cv2.line(img_test,(x1,y1),(x2,y2),255,1)#输入（图像，端点1坐标(宽横向，高纵向)，端点2坐标（宽，高），当前绘画的颜色，画笔的粗细）
-# lines = cv2.HoughLinesP(img_test, 1, np.pi / 180, 10, minLineLength=50, maxLineGap=30)#二次霍夫
-# for line in lines:
-#     x1,y1,x2,y2=line[0]#读取端点坐标
-#     #Jiang,找到连接点所在线段的端点
-#     cv2.line(img_test,(x1,y1),(x2,y2),255,1)#输入（图像，端点1坐标，端点2坐标，当前绘画的颜色，画笔的粗细）
 def HoughLinesP_Jing(img,contrast_img_path,rho, theta, threshold, lines=None, minLineLength=None, maxLineGap=None,contrast=True):
     if contrast==True:
         img_contrast = cv2.imread(r'{}'.format(contrast_img_path), 1)  # 效果对比图之断点，1是以BGR图方式去读
@@ -285,9 +239,6 @@ def HoughLinesP_Jing(img,contrast_img_path,rho, theta, threshold, lines=None, mi
 
 
 if __name__=='__main__':
-    # img_path='Line_Test_new.png'#大图
-    # img_path='test_04.png'
-    # img_path='./Line_Test_demo.png'#小图
     dir_path=r'C:\Users\Administrator\Desktop\U-net\Pytorch-UNet\utils\HoughLinesJ_test'#处理该文件夹下的图片
     result_path=r'C:\Users\Administrator\Desktop\U-net\Pytorch-UNet\utils\HoughLinesJ_result'#输出结果到该文件夹
     dirs=os.listdir(dir_path)
@@ -311,13 +262,7 @@ if __name__=='__main__':
         # img_reslut3, img_contrast, img_contrast2 = HoughLinesP_Jing(img_reslut2, img_path, 1, np.pi / 180, 30,# 三次霍夫与拟合变换
         #                                                             minLineLength=60, maxLineGap=60, contrast=True)
         retval = cv2.imwrite(result_path+'\\{0}'.format(each)+'_AfterConnect.png',img_reslut2)
-    # cv2.imshow('img',img_reslut)
-    # cv2.imshow('img2',img_reslut2)
-
-    # cv2.imshow('img_t',img_contrast)
-    # cv2.imshow('img_t2',img_contrast2)
-    # cv2.waitKey()
-
+  
 
 
 
